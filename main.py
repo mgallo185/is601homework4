@@ -1,10 +1,9 @@
-"""main.py"""
 import sys
 from decimal import Decimal, InvalidOperation
 from calculator import Calculator
 
 def calculate_and_print(num1, num2, operation_name):
-    '''calculate and print'''
+    '''Calculate and print'''
     operation_mappings = {
         'add': Calculator.add,
         'subtract': Calculator.subtract,
@@ -12,12 +11,11 @@ def calculate_and_print(num1, num2, operation_name):
         'divide': Calculator.divide
     }
 
-    # Unified error handling for decimal conversion
     try:
-        # Convert inputs to decimals
+        # Convert input to decimals
         a_decimal, b_decimal = map(Decimal, [num1, num2])
 
-        # Check if the operation exists and perform the calculation
+        # Perform operation if valid, otherwise print error
         operation = operation_mappings.get(operation_name)
         if operation:
             result = operation(a_decimal, b_decimal)
@@ -26,17 +24,14 @@ def calculate_and_print(num1, num2, operation_name):
             print(f"Unknown operation: {operation_name}")
 
     except InvalidOperation:
-        # Catch invalid number input
         print(f"Invalid number input: {num1} or {num2} is not a valid number.")
-    except ZeroDivisionError:
-        # Catch division by zero errors
-        print("Error: Division by zero.")
-    except Exception as e:
-        # Catch any other unexpected errors
+    except ValueError as e:
+        print(f"An error occurred: {e}")
+    except Exception as e:  # Keep this to catch unexpected cases
         print(f"An error occurred: {e}")
 
 def main():
-    '''main function'''
+    '''Main function'''
     if len(sys.argv) != 4:
         print("Usage: python main.py <number1> <number2> <operation>")
         sys.exit(1)
