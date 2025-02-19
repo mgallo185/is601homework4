@@ -43,6 +43,13 @@ def test_argument_count(capsys):
     captured = capsys.readouterr()
     assert "Usage: python main.py <number1> <number2> <operation>" in captured.out
 
+def test_main_success(capsys):
+    """Test successful execution of main()"""
+    with patch.object(sys, 'argv', ['main.py', '5', '3', 'add']):
+        main()
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "The result of 5 add 3 is equal to 8"
+
 def test_unexpected_error(capsys):
     """Test handling of unexpected errors"""
     with patch('calculator.Calculator.add', side_effect=Exception("Unexpected test error")):
@@ -50,10 +57,9 @@ def test_unexpected_error(capsys):
         captured = capsys.readouterr()
         assert captured.out.strip() == "An error occurred: Unexpected test error"
 
-def test_module_execution():
+def test_module_execution(capsys):
     """Test direct module execution"""
     with patch.object(sys, 'argv', ['main.py', '5', '3', 'add']):
-        try:
-            runpy.run_module('main', run_name='__main__')
-        except SystemExit:
-            pass
+        runpy.run_module('main', run_name='__main__')
+        captured = capsys.readouterr()
+        assert captured.out.strip() == "The result of 5 add 3 is equal to 8"

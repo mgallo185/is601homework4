@@ -7,6 +7,7 @@ from calculator.operations import add, subtract, multiply, divide
 
 # Initialize Faker for generating random test data
 fake = Faker()
+fake.seed_instance(12345)
 
 def generate_test_data(num_records):
     """ generate test data"""
@@ -19,47 +20,49 @@ def generate_test_data(num_records):
     }
 
     # Generate test data
-    for _ in range(num_records):
-        a = Decimal(fake.random_number(digits=2))
-        b = Decimal(fake.random_number(digits=2)) if _ % 4 != 3 else Decimal(fake.random_number(digits=1))
-        operation_name = fake.random_element(elements=list(operation_mappings.keys()))
+    for i in range(num_records):
+        # Ensure we get both normal numbers and potential zero divisors
+        if i % 4 == 0:
+            a = Decimal('10')
+            b = Decimal('0')
+            operation_name = 'divide'
+        else:
+            a = Decimal(str(fake.random_number(digits=2)))
+            b = Decimal(str(fake.random_number(digits=2)))
+            operation_name = fake.random_element(elements=list(operation_mappings.keys()))
+
         operation_func = operation_mappings[operation_name]
 
-        # Ensure b is not zero for divide operation to prevent division by zero in expected calculation
-        if operation_name == 'divide':
-            b = Decimal('1') if b == Decimal('0') else b
+        # Calculate expected result
+        if operation_name == 'divide' and b == 0:
+            # Skip division by zero cases as they're handled by test_divide_by_zero
+            continue
 
-        try:
-            # Calculate the expected result
-            expected = operation_func(a, b)
-        except ZeroDivisionError:
-            expected = "ZeroDivisionError"
+        expected = operation_func(a, b)
 
         yield a, b, operation_name, operation_func, expected
 
 def pytest_addoption(parser):
-    """generate pytest"""
-    # Add command-line option for specifying the number of test records to generate
-    parser.addoption("--num_records", action="store", default=5, type=int, help="Number of test records to generate")
+    """Add command-line option for number of test records"""
+    parser.addoption(
+        "--num_records",
+        action="store",
+        default=10,
+        type=int,
+        help="Number of test records to generate"
+    )
 
 def pytest_generate_tests(metafunc):
-    """check generate tests"""
-    # Check if the test is expecting any of the dynamically generated fixtures
-    if {"a", "b", "expected"}.intersection(set(metafunc.fixturenames)):
+    """Generate test parameters"""
+    if any(x in metafunc.fixturenames for x in ["a", "b", "expected"]):
         num_records = metafunc.config.getoption("num_records")
-
-        # Generate test data
         parameters = list(generate_test_data(num_records))
 
-        # Modify parameters to fit test functions' expectations
-        modified_parameters = []
-        for a, b, operation_name, operation_func, expected in parameters:
-            if 'operation_name' in metafunc.fixturenames:
-                # For Calculator tests, use operation_name
-                modified_parameters.append((a, b, operation_name, expected))
-            elif 'operation' in metafunc.fixturenames:
-                # For Calculation tests, use operation_func
-                modified_parameters.append((a, b, operation_func, expected))
+        modified_parameters = [
+            (a, b, operation_name, expected) if "operation_name" in metafunc.fixturenames
+            else (a, b, operation_func, expected)
+            for a, b, operation_name, operation_func, expected in parameters
+        ]
 
-        # Parametrize the test function
-        metafunc.parametrize("a,b,operation,expected", modified_parameters)
+        if modified_parameters:
+            metafunc.parametrize("a,b,operation,expected", modified_parameters)
